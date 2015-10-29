@@ -1,0 +1,12 @@
+<files>
+    <file src = "res/images/iGaming.png" />
+
+    <file src = "res/mods/nitro.dff" />
+    <file src = "res/mods/nitro.txd" />
+
+    <file src = "res/mods/repair.dff" />
+    <file src = "res/mods/repair.txd" />
+
+    <file src = "res/mods/vehiclechange.dff" />
+    <file src = "res/mods/vehiclechange.txd" />
+</files>

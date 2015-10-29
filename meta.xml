@@ -1,0 +1,40 @@
+<meta>
+    <info author = "PewX" version = "0.1" name = "MTAGoJump" type = "script" />
+    <min_mta_version client="1.5.0" server="1.5.0" />
+    <oop>true</oop>
+
+    <!--Shared-->
+        <!--Utility-->
+            <script src = "shared/utility/classlib.lua" type = "shared" cache = "false" />
+            <script src = "shared/utility/utilities.lua" type = "shared" cache = "false" />
+        <!--Classes-->
+            <script src = "shared/classes/CRPC.lua" type = "shared" cache = "false" />
+            <script src = "shared/classes/CEvent.lua" type = "shared" cache = "false" />
+            <script src = "shared/classes/CSingleton.lua" type = "shared" cache = "false" />
+
+    <!--Server-->
+
+    <!--Client-->
+        <!--Core-->
+            <script src = "client/system/CCore.lua" type = "client" cache = "false"/>
+
+        <!--Classes-->
+            <script src = "client/classes/CAnimations/CAnimations.lua" type = "client" cache = "false" />
+            <script src = "client/classes/GoJump/GoJump.lua" type = "client" cache = "false" />
+
+    <!--Files-->
+        <file src = "res/img/bg_1.png" />
+        <file src = "res/img/bg_2.png" />
+        <file src = "res/img/bg_3.png" />
+        <file src = "res/img/bg_4.png" />
+        <file src = "res/img/bg_5.png" />
+        <file src = "res/img/bg_6.png" />
+
+        <file src = "res/img/circle_play.png" />
+        <file src = "res/img/player_l.png" />
+        <file src = "res/img/player_r.png" />
+
+        <file src = "res/sound/jump.wav" />
+        <file src = "res/sound/point.wav" />
+        <file src = "res/sound/dead.wav" />
+</meta>
