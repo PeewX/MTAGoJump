@@ -23,6 +23,9 @@
             <script src = "client/classes/GoJump/GoJump.lua" type = "client" cache = "false" />
 
     <!--Files-->
+        <file src = "res/img/titlescreen.png" />
+        <file src = "res/img/howto.png" />
+
         <file src = "res/img/bg_1.png" />
         <file src = "res/img/bg_2.png" />
         <file src = "res/img/bg_3.png" />
