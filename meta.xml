@@ -34,10 +34,24 @@
         <file src = "res/img/bg_6.png" />
 
         <file src = "res/img/circle_play.png" />
+        <file src = "res/img/circle_stats.png" />
+        <file src = "res/img/circle_color.png" />
+        <file src = "res/img/circle_sound.png" />
+        <file src = "res/img/circle_sound_off.png" />
         <file src = "res/img/player_l.png" />
         <file src = "res/img/player_r.png" />
+        <file src = "res/img/arrow_down.png" />
 
         <file src = "res/sound/jump.wav" />
         <file src = "res/sound/point.wav" />
         <file src = "res/sound/dead.wav" />
+        <file src = "res/sound/button.wav" />
+        <file src = "res/sound/average.wav" />
+        <file src = "res/sound/highscore.wav" />
+
+        <file src = "res/font/FontAwesome.otf" />
+        <file src = "res/font/JosefinSans-Regular.ttf" />
+        <file src = "res/font/JosefinSans-Thin.ttf" />
+        <file src = "res/font/TrendexLightSSi.ttf" />
+
 </meta>

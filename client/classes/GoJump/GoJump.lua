@@ -8,12 +8,18 @@
 GoJump = {}
 
 function GoJump:constructor()
+    self.font_JosefinSans50 = dxCreateFont("res/font/JosefinSans-Thin.ttf", 50)
+    self.font_JosefinSans20 = dxCreateFont("res/font/JosefinSans-Thin.ttf", 20)
+    self.font_JosefinSans13 = dxCreateFont("res/font/JosefinSans-Thin.ttf", 13)
+
     self.state = "Home"
     self.width, self.height = 400, 600
 
     self.renderTarget = DxRenderTarget(self.width, self.height, true)
     self.white = tocolor(255, 255, 255)
     self.currentID = 0
+    self.scores = {}
+    self.sounds = true
 
     self:loadImages()
     self.background = self[("bg_%s"):format(math.random(1,6))]
@@ -41,12 +47,7 @@ function GoJump:constructor()
 
     Event:add(self, "onClientRender", root, true)
 
-    self._bindKeySpaceFunc = bind(GoJump.onJump, self)
-    bindKey("space", "both", self._bindKeySpaceFunc)
-
-    self.moveState = "r"
-    -- movePlayer handled by animation class as callback function
-    -- setTimer(bind(GoJump.movePlayer, self), 2000, 0)
+    self:keyBinds()
 end
 
 function GoJump:destructor()
@@ -58,8 +59,13 @@ function GoJump:loadImages()
         "titlescreen",
         "howto",
         "circle_play",
+        "circle_stats",
+        "circle_color",
+        "circle_sound",
+        "circle_sound_off",
         "player_l",
         "player_r",
+        "arrow_down",
         "bg_1",
         "bg_2",
         "bg_3",
@@ -73,6 +79,32 @@ function GoJump:loadImages()
     end
 end
 
+function GoJump:keyBinds()
+    self._bindKeySpaceFunc = bind(GoJump.onJump, self)
+
+    self._bindKeyMusicFunc =
+        function()
+            self.sounds = not self.sounds
+            self:updateRenderTarget()
+        end
+
+    self._bindKeyBackgroundFunc =
+        function()
+            self.background = self[("bg_%s"):format(math.random(1,6))]
+            self:updateRenderTarget()
+        end
+
+    self._bindKeyStatsFunc =
+        function()
+            outputChatBox("Currently not available ._.")
+        end
+
+    bindKey("space", "both", self._bindKeySpaceFunc)
+    bindKey("m", "down", self._bindKeyMusicFunc)
+    bindKey("c", "down", self._bindKeyBackgroundFunc)
+    bindKey("s", "down", self._bindKeyStatsFunc)
+end
+
 function GoJump:createLines()
     for i = 0, 500 do
         local lineHeight = self.height - self.staticOffset - self.staticFloorHeight*i
@@ -81,6 +113,8 @@ function GoJump:createLines()
 end
 
 function GoJump:createBlocks()
+    --local st = getTickCount()
+
     for i = 0, 500 do
         local blockHeight = (self.height - self.staticOffset - self.staticFloorHeight*i) - 32
         local blockAnim = new(CAnimation, self, ("blockX_%s"):format(i))
@@ -91,41 +125,37 @@ function GoJump:createBlocks()
         self.Blocks[i] = {height = blockHeight, anim = blockAnim, state = moveState, speed = moveSpeed}
     end
 
-    --Clear Blocks:
-    for _, c in ipairs({0, 5, 10, 15, 20, 50, 75, 100, 140, 180, 200 }) do
+    --Clear Blocks
+    for _, c in ipairs({0, 2, 5, 10, 15, 20, 50, 75, 100, 140, 180, 200 }) do
        self.Blocks[c].state = "none"
     end
+
+    --outputChatBox(("Created block in %sms"):format(math.floor(getTickCount()-st)))
 end
 
 function GoJump:getRandomSpeed(blockID)
     --Todo: Make speed dependent on blockID
     local def = {
-        [1] = {min = 1800, max = 2100},
+        [1] = {min = 2000, max = 2100},
         [2] = {min = 2100, max = 2400},
         [3] = {min = 2400, max = 2700},
         [4] = {min = 2700, max = 3000},
-        [5] = {min = 900, max = 1100},
+        [5] = {min = 800, max = 1000},
     }
 
-    local sep = math.random(1, ((math.random(1, 5) == 2) and (math.random(1,5) == 3)) and 5 or 4 )
-
+    local sep = math.random(1, math.random(1, 5) == 3 and 5 or 4)
     local randomSpeed = math.random(def[sep].min, def[sep].max)
 
     --Check speed of previous block
     if self.Blocks[blockID-1] then
         local previousBlockSpeed = self.Blocks[blockID-1].speed
+
         local diff = math.abs(previousBlockSpeed - randomSpeed)
-
-        local runs = 0
-        while diff <= 100 do
-            runs = runs + 1
+        while diff <= 350 do
+            sep = math.random(1, math.random(1, 5) == 2 and 5 or 4)
             randomSpeed = math.random(def[sep].min, def[sep].max)
-            diff = math.abs(previousBlockSpeed - randomSpeed)
-            outputChatBox(("Changing speed of block id %s"):format(blockID))
 
-            if runs >= 5 then
-                break
-            end
+            diff = math.abs(previousBlockSpeed - randomSpeed)
         end
 
     end
@@ -181,12 +211,68 @@ function GoJump:onJump(_, str_State)
             playSound("res/sound/point.wav")
             self.currentID = self.currentID + 1
             self.anim_offset:startAnimation(2500, "OutQuad", self.currentID*self.staticFloorHeight)
+
+            if self.currentID == self.average then
+               playSound("res/sound/average.wav")
+            end
+
+            if self.highscore and self.currentID == self.highscore then
+                playSound("res/sound/highscore.wav")
+            end
         end
     end
 end
 
 function GoJump.jumpDone()
     --Todo: improve jump method with callback function
+end
+
+function GoJump:playerDied()
+    if self.state == "dead" then return end
+    playSound("res/sound/dead.wav")
+
+    self.state = "dead"
+    self.lastScore = self.currentID
+    table.insert(self.scores, self.currentID)
+
+    --Calc highscore
+    table.sort(self.scores)
+    self.highscore = self.scores[#self.scores]
+
+    --calc average
+    local sum = 0
+    for _, score in ipairs(self.scores) do
+        sum = sum + score
+    end
+    self.average = math.floor(sum/#self.scores)
+
+    --Reset values
+    self.currentID = 0
+    self.playerHeight = self.Lines[self.currentID] - 32
+    self.moveState = "r"
+    self.playerX = 0
+    self.heightOffset = 0
+
+    --Stop animations
+    self.anim_player:stopAnimation()
+    self.anim_player2:stopAnimation()
+    self.anim_offset:stopAnimation()
+
+    for i = 0, #self.Blocks do
+        self.Blocks[i].anim:stopAnimation()
+    end
+
+    --Back to titlescreen
+    setTimer(
+        function()
+            --Recreate blocks
+            self:createBlocks()
+
+            self.state = "Home"
+            self:updateRenderTarget()
+            self.currentID = 0
+        end
+        , 2500, 1)
 end
 
 function GoJump:updateRenderTarget()
@@ -197,13 +283,44 @@ function GoJump:updateRenderTarget()
 
     if self.state == "Home" then
         dxDrawImage(0, 0, 400, 600, self.titlescreen)
+
+        if self.lastScore then
+            dxDrawText(self.lastScore, 0, 120, self.width, 0, self.white, 1, self.font_JosefinSans50, "center")
+        end
+
+        if self.highscore then
+            dxDrawText("Best: " .. self.highscore, 0, 200, self.width, 0, self.white, 1, self.font_JosefinSans20, "center")
+        end
+
+        dxDrawImage(self.width/2 - 96/2, self.height/2 - 96/2, 96, 96, self.circle_play)
+        dxDrawImage(self.width/2 - 48/2, 400, 48, 48, self.circle_color)
+        dxDrawImage(self.width/2 - 48/2 - 70, 400, 48, 48, self.circle_stats)
+        dxDrawImage(self.width/2 - 48/2 + 70, 400, 48, 48, self.sounds and self.circle_sound or self.circle_sound_off)
+
+        dxDrawImage(self.width/2 - 18/2, self.height/2 + 96/2, 18, 18, self.arrow_down)
+        dxDrawImage(self.width/2 - 18/2, 400 + 48, 18, 18, self.arrow_down)
+        dxDrawImage(self.width/2 - 48/2 - 70 + (48/2-18/2), 400 + 48, 18, 18, self.arrow_down)
+        dxDrawImage(self.width/2 - 48/2 + 70 + (48/2-18/2), 400 + 48, 18, 18, self.arrow_down)
+
+        dxDrawText("space", self.width/2 - 48 , self.height/2 + 96/2 + 5, self.width/2 + 48, 0, self.white, 1, self.font_JosefinSans13, "center")
+        dxDrawText("c", self.width/2 - 48 , 400 + 48 + 5, self.width/2 + 48, 0, self.white, 1, self.font_JosefinSans13, "center")
+        dxDrawText("s", self.width/2 - 48/2 - 70, 400 + 48 + 5, self.width/2 - 48/2 - 70 + 48, 0, self.white, 1, self.font_JosefinSans13, "center")
+        dxDrawText("m", self.width/2 - 48/2 + 70, 400 + 48 + 5, self.width/2 - 48/2 + 70 + 48, 0, self.white, 1, self.font_JosefinSans13, "center")
     end
 
     if self.state == "Play" then
         for i = 0, #self.Lines do
             if i - self.staticDrawRange < self.currentID and i + self.staticDrawRange > self.currentID  then
                 dxDrawLine(0, self.Lines[i] + self.heightOffset, self.width, self.Lines[i] + self.heightOffset, self.white, 3)
-                dxDrawText(i, 0, self.Lines[i] + self.heightOffset + 5, self.width, y, self.white, 2, "arial", "right")
+                dxDrawText(i, 0, self.Lines[i] + self.heightOffset, self.width, 0, self.white, 1, self.font_JosefinSans20, "right")
+
+                if i == self.average then
+                    dxDrawText("average score", 5, self.Lines[i] + self.heightOffset - 5, self.width, 0, self.white, 1, self.font_JosefinSans20, self.average == self.highscore and "center" or "left")
+                end
+
+                if i == self.highscore then
+                    dxDrawText("highscore", 5, self.Lines[i] + self.heightOffset - 5, self.width, 0, self.white, 1, self.font_JosefinSans20)
+                end
             end
         end
 
@@ -225,46 +342,12 @@ function GoJump:updateRenderTarget()
             end
         end
 
-        dxDrawText(self.currentID, 0, 0, self.width, 100, self.white, 4, "default-bold", "center", "center")
+        dxDrawText(self.currentID, 0, 0, self.width, 100, self.white, 1, self.font_JosefinSans50, "center", "center")
 
         dxDrawImage(self.playerX, self.playerHeight + self.heightOffset, 32, 32, self[("player_%s"):format(self.moveState == "r" and "l" or "r")])
     end
 
     dxSetRenderTarget()
-end
-
-function GoJump:playerDied()
-    if self.state == "dead" then return end
-
-    playSound("res/sound/dead.wav")
-    self.state = "dead"
-    self.lastScore = self.currentID
-
-    --Reset values
-    self.currentID = 0
-    self.playerHeight = self.Lines[self.currentID] - 32
-    self.moveState = "r"
-    self.playerX = 0
-    self.heightOffset = 0
-
-    self.anim_player:stopAnimation()
-    self.anim_player2:stopAnimation()
-    self.anim_offset:stopAnimation()
-
-    for i = 0, #self.Blocks do
-        self.Blocks[i].anim:stopAnimation()
-    end
-
-    setTimer(
-        function()
-            --Recreate blocks
-            self:createBlocks()
-
-            self.state = "Home"
-            self:updateRenderTarget()
-            self.currentID = 0
-        end
-    ,1500, 1)
 end
 
 function GoJump:onClientRender()
@@ -279,9 +362,9 @@ function GoJump:onClientRender()
                     local blockY = self.Blocks[i].height + self.heightOffset
 
                     local dis = math.floor(getDistanceBetweenPoints2D(playerX, playerY, blockX, blockY))
-                    dxDrawText(("Distance to '%s': %s"):format(i, dis), 20, (y/2-100) + (i - self.currentID)*25, x, y, tocolor(0, 0, 0), 2)
+                    --dxDrawText(("Distance to '%s': %s"):format(i, dis), 20, (y/2-100) + (i - self.currentID)*25, x, y, tocolor(0, 0, 0), 2)
 
-                    if dis <= 32 then
+                    if dis <= 25 then
                         self:playerDied()
                     end
                 end

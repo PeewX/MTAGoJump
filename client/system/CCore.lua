@@ -20,10 +20,6 @@ function CCore:getManager(sName)
     return self[sName]
 end
 
-function CCore:out()
-    outputChatBox("Core")
-end
-
 function CCore:startScript()
     for _, v in ipairs(self.managers) do
         if (type(_G[v[1]]) == "table") then
