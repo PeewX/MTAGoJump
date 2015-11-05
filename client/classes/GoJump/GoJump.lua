@@ -4,7 +4,6 @@
 -- Date: 28.10.2015 - Time: 19:15
 -- pewx.de // iGaming-mta.de // iRace-mta.de // iSurvival.de // mtasa.de
 --
-
 GoJump = {}
 
 function GoJump:constructor()
@@ -189,7 +188,8 @@ function GoJump:onJump(_, str_State)
             return
         end
 
-        playSound("res/sound/jump.wav")
+        --playSound("res/sound/jump.wav")
+        self:playSound("jump")
         self.anim_player:startAnimation(self.staticJumpSpeed, "OutQuad",  self.Lines[self.currentID + 1] - 32)
     elseif str_State == "up" then
         if self.ignoreUp then
@@ -208,16 +208,19 @@ function GoJump:onJump(_, str_State)
 
             self.anim_player:startAnimation(duration, "InQuad", self.Lines[self.currentID] - 32)
         else
-            playSound("res/sound/point.wav")
+            --playSound("res/sound/point.wav")
+            self:playSound("point")
             self.currentID = self.currentID + 1
             self.anim_offset:startAnimation(2500, "OutQuad", self.currentID*self.staticFloorHeight)
 
             if self.currentID == self.average then
-               playSound("res/sound/average.wav")
+               --playSound("res/sound/average.wav")
+               self:playSound("average")
             end
 
             if self.highscore and self.currentID == self.highscore then
-                playSound("res/sound/highscore.wav")
+                --playSound("res/sound/highscore.wav")
+                self:playSound("highscore")
             end
         end
     end
@@ -229,7 +232,8 @@ end
 
 function GoJump:playerDied()
     if self.state == "dead" then return end
-    playSound("res/sound/dead.wav")
+    --playSound("res/sound/dead.wav")
+    self:playSound("dead")
 
     self.state = "dead"
     self.lastScore = self.currentID
@@ -374,4 +378,10 @@ function GoJump:onClientRender()
 
     --dxDrawImage(x/2-200 / 1920*x, y/2-300 / 1080*y, 400 / 1920 * x, 600 / 1080 * y, self.renderTarget)
     dxDrawImage(x/2-200, y/2-300, 400, 600, self.renderTarget)
+end
+
+function GoJump:playSound(sSound)
+    if self.sounds then
+        playSound(("res/sound/%s.wav"):format(sSound))
+    end
 end
