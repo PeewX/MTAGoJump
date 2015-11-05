@@ -8,7 +8,6 @@ CCore = inherit(CSingleton)        --Client Core
 
 function CCore:constructor()
     self.managers = {}
-    fadeCamera(true)
     ---Manager Table: {"ManagerName", {arguments}}
 end
 
@@ -36,14 +35,16 @@ addEventHandler("onClientResourceStart", resourceRoot,
     function()
         local s = getTickCount()
         debugOutput("[CCore] Start MTAGoJump")
+
         RPC = new(CRPC)
         Event = new(CEvent)
         Core = new(CCore)
+
         Core:startScript()
-        debugOutput(("[CCore] Starting finished (%sms)"):format(getTickCount()-s))
 
         GoJump = new(GoJump)
-       -- Login = new(CLogin)
+
+        debugOutput(("[CCore] Starting finished (%sms)"):format(getTickCount()-s))
 
         --triggerServerEvent("onClientResourceStarted", resourceRoot)
     end

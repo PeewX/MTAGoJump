@@ -21,7 +21,19 @@ function CAnimation:constructor(CInstance, ...)
 end
 
 function CAnimation:destructor()
+    if self.isRendering then
+        removeEventHandler("onClientRender", root, self.renderFunc)
+    end
 
+    for k, v in pairs(self) do
+        if isElement(v) and v.destroy then
+            v:destroy()
+        end
+
+        self[k] = nil
+    end
+
+    collectgarbage()
 end
 
 function CAnimation:startAnimation(nDuration, sAnimationType, ...)

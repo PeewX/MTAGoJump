@@ -17,11 +17,7 @@ function GoJump:constructor()
     self.renderTarget = DxRenderTarget(self.width, self.height, true)
     self.white = tocolor(255, 255, 255)
     self.currentID = 0
-    self.scores = {}
     self.sounds = true
-
-    self:loadImages()
-    self.background = self[("bg_%s"):format(math.random(1,6))]
 
     self.staticFloorHeight = 200
     self.staticOffset = 35
@@ -29,28 +25,56 @@ function GoJump:constructor()
     self.staticJumpSpeed = 500
 
     self.Lines = {}
-    self:createLines()
-
     self.Blocks = {}
+
+    self:createLines()
     self:createBlocks()
 
-    self.playerHeight = self.Lines[self.currentID] - 32
-    self.moveState = "r"
-    self.playerX = 0
-    self.heightOffset = 0
-    self.anim_player = new(CAnimation, self, bind(GoJump.jumpDone, self), "playerHeight")
-    self.anim_player2 = new(CAnimation, self, bind(GoJump.movePlayer, self), "playerX")
-    self.anim_offset = new(CAnimation, self, "heightOffset")
+    self:loadStatistics()
+    self:loadImages()
+    self:initAnimations()
 
     self:updateRenderTarget()
-
-    Event:add(self, "onClientRender", root, true)
-
     self:keyBinds()
+
+    self._onClientRender = bind(GoJump.onClientRender, self)
+    addEventHandler("onClientRender", root, self._onClientRender)
+    addEventHandler("onClientResourceStop", resourceRoot, self._closeFunc)
 end
 
 function GoJump:destructor()
+    --Save stats
+    self:saveStatistics()
 
+    --Remove Events
+    removeEventHandler("onClientRender", root, self._onClientRender)
+    removeEventHandler("onClientResourceStop", resourceRoot, self._closeFunc)
+
+    --unbind keys
+    unbindKey("backspace", "down", self._closeFunc)
+    unbindKey("space", "both", self._bindKeySpaceFunc)
+    unbindKey("m", "down", self._bindKeyMusicFunc)
+    unbindKey("c", "down", self._bindKeyBackgroundFunc)
+    unbindKey("s", "down", self._bindKeyStatsFunc)
+
+    --Stop/delete animations
+    delete(self.anim_player)
+    delete(self.anim_player2)
+    delete(self.anim_offset)
+
+    for k, v in pairs(self.Blocks) do
+        delete(v.anim)
+    end
+
+    for k, v in pairs(self) do
+       if isElement(v) and v.destroy then
+           v:destroy()
+       end
+
+       self[k] = nil
+    end
+
+    collectgarbage()
 end
 
 function GoJump:loadImages()
@@ -76,6 +100,8 @@ function GoJump:loadImages()
     for _, img in ipairs(self.images) do
         self[img] = DxTexture(("res/img/%s.png"):format(img))
     end
+
+    self.background = math.random(1, 6)
 end
 
 function GoJump:keyBinds()
@@ -89,7 +115,13 @@ function GoJump:keyBinds()
 
     self._bindKeyBackgroundFunc =
         function()
-            self.background = self[("bg_%s"):format(math.random(1,6))]
+            --self.background = self[("bg_%s"):format(math.random(1,6))]
+
+            self.background = self.background + 1
+            if self.background > 6 then
+                self.background = 1
+            end
+
             self:updateRenderTarget()
         end
 
@@ -98,10 +130,65 @@ function GoJump:keyBinds()
             outputChatBox("Currently not available ._.")
         end
 
+    self._closeFunc = bind(GoJump.destructor, self)
+
+    bindKey("backspace", "down", self._closeFunc)
     bindKey("space", "both", self._bindKeySpaceFunc)
     bindKey("m", "down", self._bindKeyMusicFunc)
     bindKey("c", "down", self._bindKeyBackgroundFunc)
     bindKey("s", "down", self._bindKeyStatsFunc)
+end
+
+function GoJump:initAnimations()
+    self.playerHeight = self.Lines[self.currentID] - 32
+    self.moveState = "r"
+    self.playerX = 0
+    self.heightOffset = 0
+    self.anim_player = new(CAnimation, self, bind(GoJump.jumpDone, self), "playerHeight")
+    self.anim_player2 = new(CAnimation, self, bind(GoJump.movePlayer, self), "playerX")
+    self.anim_offset = new(CAnimation, self, "heightOffset")
+end
+
+function GoJump:loadStatistics()
+    if File.exists("stats.pew") then
+        local file = File("stats.pew", true)
+        local fileContent = file:read(file:getSize())
+        file:close()
+
+        local _, start = string.find(fileContent, "/CODE/")
+
+        if start then
+            local code = string.sub(fileContent, start + 2)
+            local decryptedContent = teaDecode(code, localPlayer.serial)
+
+            if fromJSON(decryptedContent) then
+                self.stats = fromJSON(decryptedContent)
+
+                self.highscore = self.stats.highscore
+                self.average = self.stats.average
+                return
+            end
+        end
+    end
+
+    self.stats = {
+        playedCount = 0,
+        totalScore = 0,
+        totalJumps = 0,
+        highscore = 0,
+        average = 0,
+    }
+
+    self.highscore = self.stats.highscore
+    self.average = self.stats.average
+end
+
+function GoJump:saveStatistics()
+    local fileContent = toJSON(self.stats)
+    local encryptedContent = teaEncode(fileContent, localPlayer.serial)
+    local file = File.new("stats.pew")
+    file:write("/INFO/ MTA Go Jump Stats\n/Info/ By PewX (pewx.de)\n/Info/ It's not hard to encript this shit; good luck.\n\n/CODE/ ", encryptedContent)
+    file:close()
 end
 
 function GoJump:createLines()
@@ -174,7 +261,7 @@ end
 
 function GoJump:onJump(_, str_State)
     if self.state ~= "Play" then
-        if self.state == "Home" then
+        if str_State == "down" and self.state == "Home" then
             self.state = "Play"
             self.ignoreUp = true
             self:movePlayer()
@@ -191,6 +278,7 @@ function GoJump:onJump(_, str_State)
         --playSound("res/sound/jump.wav")
         self:playSound("jump")
         self.anim_player:startAnimation(self.staticJumpSpeed, "OutQuad",  self.Lines[self.currentID + 1] - 32)
+        self.stats.totalJumps = self.stats.totalJumps + 1
     elseif str_State == "up" then
         if self.ignoreUp then
             self.ignoreUp = false
@@ -237,18 +325,18 @@ function GoJump:playerDied()
 
     self.state = "dead"
     self.lastScore = self.currentID
-    table.insert(self.scores, self.currentID)
 
-    --Calc highscore
-    table.sort(self.scores)
-    self.highscore = self.scores[#self.scores]
-
-    --calc average
-    local sum = 0
-    for _, score in ipairs(self.scores) do
-        sum = sum + score
+    --Highscore
+    if self.lastScore > self.highscore then
+        self.highscore = self.lastScore
+        self.stats.highscore = self.lastScore
     end
-    self.average = math.floor(sum/#self.scores)
+
+    --Average
+    self.stats.totalScore = self.stats.totalScore + self.lastScore
+    self.stats.playedCount = self.stats.playedCount + 1
+    self.stats.average = math.floor(self.stats.totalScore/self.stats.playedCount)
+    self.average = self.stats.average
 
     --Reset values
     self.currentID = 0
@@ -283,7 +371,7 @@ function GoJump:updateRenderTarget()
     if not self.renderTarget then return end
     self.renderTarget:setAsTarget(true)
 
-    dxDrawImage(0, 0, 400, 600, self.background)
+    dxDrawImage(0, 0, 400, 600, self[("bg_%s"):format(self.background)])
 
     if self.state == "Home" then
         dxDrawImage(0, 0, 400, 600, self.titlescreen)
@@ -355,6 +443,8 @@ function GoJump:updateRenderTarget()
 end
 
 function GoJump:onClientRender()
+    if not self.renderTarget then return end
+
     --Collide detection
     if self.state == "Play" then
         for i = 0, #self.Blocks do
