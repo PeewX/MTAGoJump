@@ -46,6 +46,9 @@ function GoJump:destructor()
     --Save stats
     self:saveStatistics()
 
+    --Kill timer
+    if self.timer:isValid() then self.timer:destroy() end
+
     --Remove Events
     removeEventHandler("onClientRender", root, self._onClientRender)
     removeEventHandler("onClientResourceStop", resourceRoot, self._closeFunc)
@@ -355,7 +358,7 @@ function GoJump:playerDied()
     end
 
     --Back to titlescreen
-    setTimer(
+    self.timer = setTimer(
         function()
             --Recreate blocks
             self:createBlocks()
