@@ -20,7 +20,7 @@
 
         <!--Classes-->
             <script src = "client/classes/CAnimations/CAnimations.lua" type = "client" cache = "false" />
-            <script src = "client/classes/GoJump/GoJump.lua" type = "client" cache = "false" />
+            <script src = "client/classes/CGoJump/CGoJump.lua" type = "client" cache = "false" />
 
     <!--Files-->
         <file src = "res/img/titlescreen.png" />
