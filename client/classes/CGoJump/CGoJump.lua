@@ -9,6 +9,7 @@ GoJump = {}
 function GoJump:constructor()
     self.font_JosefinSans50 = dxCreateFont("res/font/JosefinSans-Thin.ttf", 50)
     self.font_JosefinSans20 = dxCreateFont("res/font/JosefinSans-Thin.ttf", 20)
+    self.font_JosefinSans20B = dxCreateFont("res/font/JosefinSans-Thin.ttf", 20, true)
     self.font_JosefinSans13 = dxCreateFont("res/font/JosefinSans-Thin.ttf", 13)
 
     self.state = "Home"
@@ -24,6 +25,7 @@ function GoJump:constructor()
     self.staticDrawRange = 4
     self.staticJumpSpeed = 500
 
+    self.Scores = {}
     self.Lines = {}
     self.Blocks = {}
 
@@ -40,6 +42,7 @@ function GoJump:constructor()
     self._onClientRender = bind(GoJump.onClientRender, self)
     addEventHandler("onClientRender", root, self._onClientRender)
     addEventHandler("onClientResourceStop", resourceRoot, self._closeFunc)
+    Event:addRemote(self, "sendStats", "receiveStats")
 end
 
 function GoJump:destructor()
@@ -47,7 +50,7 @@ function GoJump:destructor()
     self:saveStatistics()
 
     --Kill timer
-    if self.timer:isValid() then self.timer:destroy() end
+    if self.timer and self.timer:isValid() then self.timer:destroy() end
 
     --Remove Events
     removeEventHandler("onClientRender", root, self._onClientRender)
@@ -77,6 +80,7 @@ function GoJump:destructor()
        self[k] = nil
     end
 
+    self = nil
     collectgarbage()
 end
 
@@ -130,7 +134,15 @@ function GoJump:keyBinds()
 
     self._bindKeyStatsFunc =
         function()
-            outputChatBox("Currently not available ._.")
+            if self.state == "Home" then
+                self.state = "Stats"
+                self:updateRenderTarget()
+
+                RPC:call("requestStats")
+            elseif self.state == "Stats" then
+                self.state = "Home"
+                self:updateRenderTarget()
+            end
         end
 
     self._closeFunc = bind(GoJump.destructor, self)
@@ -162,7 +174,7 @@ function GoJump:loadStatistics()
 
         if start then
             local code = string.sub(fileContent, start + 2)
-            local decryptedContent = teaDecode(code, localPlayer.serial)
+            local decryptedContent = teaDecode(code, getPlayerSerial())
 
             if fromJSON(decryptedContent) then
                 self.stats = fromJSON(decryptedContent)
@@ -188,10 +200,15 @@ end
 
 function GoJump:saveStatistics()
     local fileContent = toJSON(self.stats)
-    local encryptedContent = teaEncode(fileContent, localPlayer.serial)
+    local encryptedContent = teaEncode(fileContent, getPlayerSerial())
     local file = File.new("stats.pew")
     file:write("/INFO/ MTA Go Jump Stats\n/Info/ By PewX (pewx.de)\n/Info/ It's not hard to encript this shit; good luck.\n\n/CODE/ ", encryptedContent)
     file:close()
+end
+
+function GoJump:receiveStats(tScores)
+    self.Scores = tScores
+    self:updateRenderTarget()
 end
 
 function GoJump:createLines()
@@ -334,6 +351,7 @@ function GoJump:playerDied()
         self.highscore = self.lastScore
         self.stats.highscore = self.lastScore
     end
+    RPC:call("sendHighscore", self.lastScore)
 
     --Average
     self.stats.totalScore = self.stats.totalScore + self.lastScore
@@ -403,6 +421,28 @@ function GoJump:updateRenderTarget()
         dxDrawText("m", self.width/2 - 48/2 + 70, 400 + 48 + 5, self.width/2 - 48/2 + 70 + 48, 0, self.white, 1, self.font_JosefinSans13, "center")
     end
 
+    if self.state == "Stats" then
+        dxDrawImageSection(0, 0, 400, 400, 0, 0, 400, 400, self.titlescreen)
+        dxDrawText("Pos.", 10, 165, x, y, self.white, 1, self.font_JosefinSans20B)
+        dxDrawText("Name", 70, 165, x, y, self.white, 1, self.font_JosefinSans20B)
+        dxDrawText("Score", 320, 165, x, y, self.white, 1, self.font_JosefinSans20B)
+
+        for i, score in ipairs(self.Scores) do
+            if i <= 10 then
+                --First row
+                dxDrawText(i, 10, 200 + (i-1)*30, x, y, self.white, 1, self.font_JosefinSans20)
+
+                --Secconds row
+                dxDrawText(clearText(score.name), 70, 200 + (i-1)*30, x, y, self.white, 1, self.font_JosefinSans20)
+
+                --Third row
+                dxDrawText(score.score, 320, 200 + (i-1)*30, x, y, self.white, 1, self.font_JosefinSans20)
+            end
+        end
+
+        dxDrawText("Press 's' again to go back", 0, 550, 400, 600, self.white, 1, self.font_JosefinSans20B, "center")
+    end
+
     if self.state == "Play" then
         for i = 0, #self.Lines do
             if i - self.staticDrawRange < self.currentID and i + self.staticDrawRange > self.currentID  then
@@ -410,11 +450,11 @@ function GoJump:updateRenderTarget()
                 dxDrawText(i, 0, self.Lines[i] + self.heightOffset, self.width, 0, self.white, 1, self.font_JosefinSans20, "right")
 
                 if i == self.average then
-                    dxDrawText("average score", 5, self.Lines[i] + self.heightOffset - 5, self.width, 0, self.white, 1, self.font_JosefinSans20, self.average == self.highscore and "center" or "left")
+                    dxDrawText("average score", 5, self.Lines[i] + self.heightOffset - 5, self.width, 0, self.white, 1, self.font_JosefinSans20, self.average == self.highscore and "center" or "left", "top", false, false, false, true)
                 end
 
                 if i == self.highscore then
-                    dxDrawText("highscore", 5, self.Lines[i] + self.heightOffset - 5, self.width, 0, self.white, 1, self.font_JosefinSans20)
+                    dxDrawText("highscore", 5, self.Lines[i] + self.heightOffset - 5, self.width, 0, self.white, 1, self.font_JosefinSans20, "left", "top", false, false, false, true)
                 end
             end
         end

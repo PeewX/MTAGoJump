@@ -13,6 +13,11 @@
             <script src = "shared/classes/CSingleton.lua" type = "shared" cache = "false" />
 
     <!--Server-->
+        <!--Corre-->
+            <script src = "server/system/CCore.lua" type = "server" />
+
+        <!--Classes-->
+            <script src = "server/classes/CGoJump/CGoJump.lua" type = "server" />
 
     <!--Client-->
         <!--Core-->

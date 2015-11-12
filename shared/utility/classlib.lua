@@ -373,7 +373,7 @@ oop.initClasses = function()
     oop.prepareClass("Vehicle")
     oop.prepareClass("Water")
     --oop.prepareClass("XML")
-    oop.prepareClass("Timer")
+    --oop.prepareClass("Timer")
     oop.prepareClass("Team")
     --oop.prepareClass("Resource")
 end
